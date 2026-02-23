@@ -74,7 +74,7 @@ Wallet (RainbowKit) → Wagmi → Viem client → Web3CoreLayer → CollectiveSD
 
 ## Project structure (target)
 
-After following the [ROADMAP](./ROADMAP.md), the layout will look like this:
+The layout will look like this:
 
 ```text
 .
@@ -104,7 +104,6 @@ After following the [ROADMAP](./ROADMAP.md), the layout will look like this:
 │   │   └── utils
 │   │       └── RootstockTestnet.ts
 │   └── pages
-├── ROADMAP.md                    # Phased implementation plan
 ├── README.md                     # This file
 └── package.json
 ```
@@ -169,22 +168,6 @@ npm run dev
 ```
 
 Open the app and connect a wallet on **Rootstock Testnet (Chain ID: 31)**. The Collective flows (staking, proposals, voting) are intended for Testnet only in this kit.
-
----
-
-## Roadmap and next steps
-
-The full implementation plan is in **[ROADMAP.md](./ROADMAP.md)**. It covers:
-
-- **Phase 0**: Cleanup and lock to Rootstock Testnet for Collective flows  
-- **Phase 1**: Install SDK deps and `constants/contracts.ts` (contract-address overrides)  
-- **Phase 2**: `hooks/useCollective.ts` (Web3CoreLayer → CollectiveSDK → proposals, staking, vote)  
-- **Phase 3**: UI (ConnectWallet, StakingCard, ProposalList, VoteButton) and Rootstock Editor Mode styling  
-- **Phase 4**: README and code comments (3-layer architecture, persona-style comments)  
-- **Phase 5**: Security (simulate before write; Insufficient VP and SDK-base error handling)  
-- **Phase 6** (optional): Migrate to Next.js 14+ for the Developers Portal guide  
-
-Following the roadmap in order will yield a single-page DAO experience: connect → stake RIF → see proposals → vote, with strict typing and clear error handling.
 
 ---
 
