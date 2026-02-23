@@ -1,9 +1,9 @@
 /**
  * ConnectWallet: wallet connection for the Collective DAO using Wagmi + RainbowKit.
- * Rootstock Editor Mode: high-contrast; active state uses #FF9100 (orange).
+ * Uses custom account modal so small tRBTC balances display correctly.
  */
 
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import CustomConnectButton from "./CustomConnectButton";
 
 export default function ConnectWallet(): JSX.Element {
   return (
@@ -11,10 +11,7 @@ export default function ConnectWallet(): JSX.Element {
       <p className="text-[#FAF9F5] text-sm">
         Connect your wallet on Rootstock Testnet to stake RIF and vote.
       </p>
-      <ConnectButton
-        showBalance={false}
-        chainStatus={{ smallScreen: "none", largeScreen: "icon" }}
-      />
+      <CustomConnectButton />
     </div>
   );
 }

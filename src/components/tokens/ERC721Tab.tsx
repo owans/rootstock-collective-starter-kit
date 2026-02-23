@@ -2,7 +2,7 @@ import Button from "@/components/ui/button";
 // import { Input } from "@/components/ui/input";
 // import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
+import CustomConnectButton from "@/components/dao/CustomConnectButton";
 import { useToast } from "@/components/ui/use-toast";
 import { useState } from "react";
 import { useAccount, useWriteContract, useReadContract } from "wagmi";
@@ -71,7 +71,7 @@ export default function ERC721Tab(): JSX.Element {
             <p>Make sure your wallet is connected.</p>
           </div>
           <div className="flex justify-center">
-            <ConnectButton showBalance={false} chainStatus={"icon"} />
+            <CustomConnectButton />
           </div>
           <div className="flex items-center gap-4">
             <span className="font-neueMachinaBold px-2 pt-[5px] text-black rounded-full bg-orange-400 grid place-items-center">

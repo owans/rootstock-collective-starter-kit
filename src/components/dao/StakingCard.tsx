@@ -8,7 +8,8 @@
  */
 
 import { useState, useCallback, useMemo } from "react";
-import { useReadContract, useBalance, usePublicClient } from "wagmi";
+import { useBalance, usePublicClient } from "wagmi";
+import { getAddress } from "viem";
 import type { CollectiveSDK } from "@/lib/collectiveStub";
 import type { WalletClient } from "viem";
 import type { Address } from "viem";
@@ -23,7 +24,6 @@ import {
   simulateUnstakeRIF,
 } from "@/lib/simulation";
 import { COLLECTIVE_CONTRACT_ADDRESSES, ROOTSTOCK_TESTNET_CHAIN_ID } from "@/constants/contracts";
-import { abi as erc20Abi } from "@/assets/abis/ERC20abi";
 
 const DECIMALS = 18n;
 
@@ -87,30 +87,33 @@ export default function StakingCard({
     query: queryOpts,
   });
 
-  const { data: rifBalanceRaw } = useReadContract({
-    address: addresses?.RIF,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [address],
+  // Use useBalance with token for RIF/stRIF so Testnet tRIF (ERC677) is detected reliably
+  const rifBalanceQuery = useBalance({
+    address,
+    token: addresses?.RIF ? getAddress(addresses.RIF) : undefined,
     chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
-    query: queryOpts,
+    query: { ...queryOpts, enabled: !!address && !!addresses?.RIF },
   });
 
-  const { data: stRifBalanceRaw } = useReadContract({
-    address: addresses?.stRIF,
-    abi: erc20Abi,
-    functionName: "balanceOf",
-    args: [address],
+  const stRifBalanceQuery = useBalance({
+    address,
+    token: addresses?.stRIF ? getAddress(addresses.stRIF) : undefined,
     chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
-    query: queryOpts,
+    query: { ...queryOpts, enabled: !!address && !!addresses?.stRIF },
   });
 
   const tRbtcFormatted = formatTokenBalance(
     nativeBalance?.value,
     BigInt(nativeBalance?.decimals ?? 18)
   );
-  const rifFormatted = formatTokenBalance(rifBalanceRaw as bigint | undefined);
-  const stRifFormatted = formatTokenBalance(stRifBalanceRaw as bigint | undefined);
+  const rifFormatted = formatTokenBalance(
+    rifBalanceQuery.data?.value,
+    BigInt(rifBalanceQuery.data?.decimals ?? 18)
+  );
+  const stRifFormatted = formatTokenBalance(
+    stRifBalanceQuery.data?.value,
+    BigInt(stRifBalanceQuery.data?.decimals ?? 18)
+  );
 
   const handleStake = useCallback(async () => {
     if (!walletClient || !addresses || !publicClient) return;

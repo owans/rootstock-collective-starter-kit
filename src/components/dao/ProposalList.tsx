@@ -1,6 +1,7 @@
 /**
  * ProposalList: fetches and displays proposals via collective-sdk proposals.getProposals().
  * Rootstock Editor Mode: cards with #FF9100 borders.
+ * Long proposal IDs and vote amounts are formatted for readable display.
  */
 
 import { useEffect, useState } from "react";
@@ -8,6 +9,7 @@ import type { CollectiveSDK, ProposalsListResult } from "@/lib/collectiveStub";
 import type { WalletClient } from "viem";
 import type { Address } from "viem";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatProposalId, formatVoteOrAmount } from "@/lib/formatDisplay";
 import VoteButton from "./VoteButton";
 
 const CARD_BORDER = "border-[#FF9100]/50";
@@ -58,7 +60,8 @@ export default function ProposalList({
   if (!result || result.proposals.length === 0) {
     return (
       <div className="text-[#FAF9F5]/80 py-8">
-        No proposals yet. Check back later or create one on Testnet.
+        No proposals yet. This kit supports viewing and voting only; create
+        proposals elsewhere on Rootstock Testnet.
       </div>
     );
   }
@@ -72,12 +75,15 @@ export default function ProposalList({
           >
             <CardHeader className="pb-2">
               <CardTitle className="text-[#FAF9F5] text-lg">
-                Proposal {proposal.proposalId}
+                Proposal {formatProposalId(proposal.proposalId)}
               </CardTitle>
               <div className="flex flex-wrap gap-2 text-xs text-[#FAF9F5]/70">
                 <span>State: {proposal.stateLabel}</span>
-                <span>Deadline block: {proposal.deadline.toString()}</span>
-                <span>For: {proposal.forVotes.toString()} · Against: {proposal.againstVotes.toString()}</span>
+                <span>Deadline block: {proposal.deadline.toLocaleString()}</span>
+                <span>
+                  For: {formatVoteOrAmount(proposal.forVotes)} · Against: {formatVoteOrAmount(proposal.againstVotes)}
+                  {proposal.abstainVotes > 0n && ` · Abstain: ${formatVoteOrAmount(proposal.abstainVotes)}`}
+                </span>
               </div>
             </CardHeader>
             <CardContent className="pt-0">

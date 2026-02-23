@@ -19,7 +19,7 @@ A sample dApp built on the [Rootstock Collective SDK](https://github.com/rsksmar
 
 ## What’s in this kit
 
-- **Wallet connection**: Wagmi + RainbowKit (from the base [rsk-wagmi-starter-kit](https://github.com/rsksmart/rsk-wagmi-starter-kit)).
+- **Wallet connection**: Wagmi + RainbowKit (from the base [rsk-wagmi-starter-kit](https://github.com/rsksmart/rsk-wagmi-starter-kit)). The kit still uses RainbowKit for the connect flow (wallet list, WalletConnect, etc.); only the *account* popup (after connecting) is custom so small tRBTC balances display correctly.
 - **Collective SDK surface**: One hook (`useCollective`) exposing **proposals** (getProposals, castVote), **staking** (getStakingInfo, approveRIF, stakeRIF, unstakeRIF).
 - **DAO UI**: Connect wallet → Stake/withdraw RIF → List active proposals → Vote (with simulation before every write).
 - **Contract overrides**: Single source of Collective contract addresses for Testnet in `constants/contracts.ts` (governor, treasury, RIF, stRIF, etc.).
@@ -136,13 +136,34 @@ npm install
 
 ### 2. Environment
 
-Copy `.env.example` to `.env` and set:
+Copy `.env.example` to `.env` and set the variables below.
 
-```shell
-VITE_WC_PROJECT_ID='your Reown (WalletConnect) project ID'
-```
+#### Get your WalletConnect (Reown) project ID (required)
 
-Get a project ID from the [Reown Dashboard](https://cloud.reown.com/sign-in). No other keys are required for this Collective DAO starter.
+You need a project ID so the app can use WalletConnect (e.g. mobile wallets, WalletConnect-compatible browsers).
+
+1. Go to the [Reown (WalletConnect) Cloud](https://cloud.reown.com) and sign in (or create an account).
+2. Open **Projects** and click **Create** (or use an existing project).
+3. Open the project and copy the **Project ID** from the project details.
+4. In your `.env` file set:
+   ```shell
+   VITE_WC_PROJECT_ID='your-project-id'
+   ```
+
+#### Get your Rootstock RPC API key (optional)
+
+With an API key, the app uses the [Rootstock RPC API](https://dev.rootstock.io/developers/rpc-api/rootstock) (`https://rpc.testnet.rootstock.io/<your-api-key>`) for higher rate limits. Without it, the app uses the public Testnet node.
+
+1. Go to the [Rootstock RPC API dashboard](https://dashboard.rpc.rootstock.io) and sign up or log in.
+2. Click **New API key**, give it a name, and select **Testnet**.
+3. Create the key, then copy it from the dashboard.
+4. In your `.env` file set:
+   ```shell
+   VITE_ROOTSTOCK_RPC_API_KEY='your-api-key'
+   ```
+   Leave this empty or omit it to use the public node. See [Getting Started with the Rootstock RPC API](https://dev.rootstock.io/developers/rpc-api/rootstock/setup) for more.
+
+No other keys are required for this Collective DAO starter.
 
 **How the starter kit uses the Collective SDK for writes**  
 The Collective SDK’s write methods (`stakeRIF`, `unstakeRIF`, `castVote`, etc.) take a **WalletClient** (from viem) so the SDK can request a signature. In this starter kit we use the SDK correctly as a **browser dApp**: the WalletClient comes from the **user’s connected wallet** (Wagmi + RainbowKit). The user approves each transaction in their wallet; the app never has access to a private key. No `PRIVATE_KEY` is required in `.env`; only `VITE_WC_PROJECT_ID` for WalletConnect.
@@ -158,7 +179,7 @@ The **connected wallet** must hold Testnet funds: **tRBTC** for gas, and **RIF**
 
 **Contracts and dApp security**  
 - This repo has no smart contract source. It calls external Rootstock Collective DAO contracts on Testnet via `constants/contracts.ts`. Contract security is the responsibility of the Collective SDK and Rootstock.  
-- Contract addresses are fixed; staking amounts are validated (non-negative integer, uint256). Voting uses `proposalId` and `support` from SDK/UI only. All writes (stake, withdraw, vote) are simulated before send; errors (e.g. Insufficient VP) are handled in the UI.  
+- Contract addresses are fixed; staking amounts are validated in the UI as a positive integer in wei (minimum 1 wei, maximum uint256 — at most 78 decimal digits). The Collective contracts or SDK may enforce additional limits; simulation before send will fail if the amount is invalid on-chain. Voting uses `proposalId` and `support` from SDK/UI only. All writes (stake, withdraw, vote) are simulated before send; errors (e.g. Insufficient VP) are handled in the UI.  
 - No unsafe HTML, `eval`, or user-controlled URLs in critical paths; wallet/signer from Wagmi only.
 
 ### 3. Run

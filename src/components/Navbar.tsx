@@ -1,5 +1,5 @@
+import CustomConnectButton from "@/components/dao/CustomConnectButton";
 import Logo from "@/components/ui/logo";
-import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Link } from "react-router-dom";
 
 export default function Navbar(): JSX.Element {
@@ -8,10 +8,7 @@ export default function Navbar(): JSX.Element {
       <Link to="/" aria-label="Collective DAO home">
         <Logo className="w-[150px] h-[50px]" />
       </Link>
-      <ConnectButton
-        showBalance={false}
-        chainStatus={{ smallScreen: "none", largeScreen: "icon" }}
-      />
+      <CustomConnectButton />
     </nav>
   );
 }
