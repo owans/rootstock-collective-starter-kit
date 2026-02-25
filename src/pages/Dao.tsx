@@ -52,9 +52,10 @@ export function Dao(): JSX.Element {
               sdk={collective.sdk}
               walletClient={collective.walletClient}
               address={collective.address}
+              isRealSdk={collective.isRealSdk}
             />
           </section>
-          <section>
+          <section id="proposals" className="scroll-mt-6">
             <h2 className="text-2xl font-bold mb-4 text-[#FAF9F5]">
               Active proposals
             </h2>

@@ -37,6 +37,9 @@
     "viem": "~2.9.23",
     "wagmi": "^2.5.20"
   },
+  "optionalDependencies": {
+    "@rsksmart/collective-sdk": "^0.2.1"
+  },
   "devDependencies": {
     "@types/node": "^20.12.8",
     "@types/react": "^18.2.79",

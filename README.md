@@ -11,7 +11,7 @@ A sample dApp built on the [Rootstock Collective SDK](https://github.com/rsksmar
 
 ## Purpose of this kit
 
-- **Sample dApp**: A minimal, runnable app that shows real usage of the Collective SDK (proposals, staking, voting) in a React + Wagmi + RainbowKit stack.
+- **Sample dApp**: A minimal, runnable app that shows usage of the Collective SDK (proposals, staking, voting) in a React + Wagmi + RainbowKit stack.
 - **Guide companion**: The guide *Implementing On-Chain Voting with Collective SDK* uses this kit as its codebase. The README includes a dedicated **SDK methods and code references (for the guide)** section so the Lead Technical Writer can map each SDK method to the exact file and component (e.g. `stakeRIF` in StakingCard, `castVote` in VoteButton, simulation in `lib/simulation.ts`).
 - **Scope:** This kit covers participation only (stake, list proposals, vote). It does not implement claim rewards, vault deposit/withdraw, proposal creation, or a Contract Registry; those can be added in the guide or in a fork.
 
@@ -132,7 +132,28 @@ cd collective-starter-kit
 npm install
 ```
 
-**Collective SDK**: The kit uses a **stub** in **`src/lib/collectiveStub.ts`** so the UI (Connect → Stake → Proposals → Vote) builds and runs; read calls return empty/zero data and write calls throw an explanatory message. **Once the Collective SDK NPM package is published, the starter kit will refer to the NPM package:** install `@rsksmart/collective-sdk` (and its peers `@rsksmart/w3layer`, `@rsksmart/sdk-base`), then in **`hooks/useCollective.ts`** replace `createCollectiveStub()` with `createCollective({ chainId: 31, rpcUrl, contractAddresses })` from the SDK.
+
+#### Connecting the Collective SDK (GitHub Packages)
+
+You can connect the starter kit to the Collective SDK from GitHub Packages using a personal access token (e.g. for QA or development).
+
+1. **Create a GitHub Personal Access Token** with the `read:packages` scope:  
+   GitHub → Settings → Developer settings → [Personal access tokens](https://github.com/settings/tokens) → Generate new token (classic) → enable `read:packages`.
+
+2. **Configure npm to use the token** (either set the env var before install, or add it to your shell profile):
+   ```shell
+   export GITHUB_TOKEN=ghp_yourTokenHere
+   ```
+   The repo’s `.npmrc` already points the `@rsksmart` scope to GitHub Packages and uses `GITHUB_TOKEN` for auth.
+
+3. **Install dependencies** (the optional dependency `@rsksmart/collective-sdk` will be installed when the token is set):
+   ```shell
+   npm install
+   ```
+
+4. **Run the app** as usual (`npm run dev`). When the SDK is installed, `useCollective` uses the SDK with Testnet (chain ID 31), the RPC URL from your env, and contract addresses from `constants/contracts.ts`. Stake, proposals, and voting then hit Rootstock Testnet contracts.
+
+Without a token, `npm install` still succeeds; the optional SDK dependency may be skipped and the app runs with the stub and sample proposals.
 
 ### 2. Environment
 
@@ -194,7 +215,7 @@ Open the app and connect a wallet on **Rootstock Testnet (Chain ID: 31)**. The C
 
 ## Implemented in this kit
 
-This sample dApp focuses on **participation** (stake RIF, list proposals, cast vote) and uses the Collective SDK as intended for a browser dApp. The table below shows what this kit implements versus what the [Collective SDK](https://github.com/rsksmart/collective-sdk) (npm, once published) supports.
+This sample dApp focuses on **participation** (stake RIF, list proposals, cast vote) and uses the Collective SDK as intended for a browser dApp. The table below shows what this kit implements versus what the [Collective SDK](https://github.com/rsksmart/collective-sdk) (GitHub Packages) supports.
 
 | Capability | Starter kit (this repo) | Collective SDK |
 |------------|-------------------------|----------------|
@@ -215,6 +236,22 @@ The starter kit has **staking, listing proposals, and voting** (read + write) wi
 ## SDK methods and code references (for the guide)
 
 This section gives the Lead Technical Writer explicit method names, file locations, and flow so the guide *Implementing On-Chain Voting with Collective SDK* can reference the kit accurately.
+
+### Explaining voting when the kit doesn’t create proposals
+
+Proposals are what get voted on; this starter kit does **not** implement proposal creation. The writer can still explain on-chain voting clearly by framing the guide as follows:
+
+1. **Where proposals come from**  
+   Proposals exist on-chain (Rootstock Testnet) and are created **outside** this dApp—e.g. by governance admins, a separate proposal-creation tool, or the Collective SDK/contracts used elsewhere. The guide should state this upfront: *“This tutorial focuses on **participating** in governance: staking RIF for voting power and voting on **existing** proposals. Proposal creation is documented separately (or in the SDK reference).”*
+
+2. **What this kit demonstrates**  
+   The kit is the reference for the **participation** path: connect wallet → stake RIF → list proposals (`getProposals`) → cast vote (`castVote`). The writer can walk through that flow and map each step to the SDK methods and files in the tables below. Voting is explained as: *“When proposals are active, users with stRIF (voting power) can call `castVote(proposalId, support)`; the starter kit does this in VoteButton after simulating the transaction.”*
+
+3. **Hands-on and “No proposals yet”**  
+   If a reader runs the kit and sees “No proposals yet,” the guide can note that Testnet may have no active proposals yet, or point them to a separate section/tool for creating a test proposal so they can then use the kit to vote. The kit’s empty state already says: *“This kit supports viewing and voting only; create proposals elsewhere on Rootstock Testnet.”*
+
+4. **Optional: separate “Proposal creation” section**  
+   The guide can add a section (or link to SDK docs) that covers how to **create** proposals (e.g. via the Collective SDK or contracts), without requiring the starter kit to implement it. That keeps the kit focused on participation while the narrative still covers the full lifecycle: create (elsewhere) → vote (this kit).
 
 ### SDK methods used in this kit
 
@@ -249,20 +286,20 @@ Every write (approve, stake, withdraw, vote) is simulated first so the user does
 
 ### Contract overrides and types
 
-- **Addresses:** **`src/constants/contracts.ts`** exports `COLLECTIVE_CONTRACT_ADDRESSES` keyed by chain ID `31`, with: `governor`, `treasury`, `backersManager`, `builderRegistry`, `RIF`, `stRIF`, `USDRIF`. Passed to `createCollective({ chainId: 31, rpcUrl, contractAddresses })` when using the real SDK.
+- **Addresses:** **`src/constants/contracts.ts`** exports `COLLECTIVE_CONTRACT_ADDRESSES` keyed by chain ID `31`, with: `governor`, `treasury`, `backersManager`, `builderRegistry`, `RIF`, `stRIF`, `USDRIF`. Passed to `createCollective({ chainId: 31, rpcUrl, contractAddresses })` when using the SDK.
 - **SDK interface and types:** **`src/lib/collectiveStub.ts`** defines the `CollectiveSDK` interface (proposals/staking methods), `ProposalSummary`, `ProposalsListResult`, `StakingInfo`, `TokenAmount`, and `VoteSupport` (enum 0/1/2). These match the Collective SDK surface the guide should document.
 
 ---
 
-## Collective SDK NPM package (TODO)
+## Collective SDK (GitHub Packages)
 
-**TODO:** The Collective SDK is not yet published on npm. This kit currently uses a stub (`src/lib/collectiveStub.ts`) so the UI builds and runs without the real package.
+The Collective SDK is published on **GitHub Packages** (scope `@rsksmart/collective-sdk`). This kit lists it as an **optional dependency**: with a GitHub personal access token (`read:packages`) and the repo’s `.npmrc`, `npm install` will install the SDK and the app will use it (proposals, staking, voting on Testnet). Without the token, the optional dependency is skipped and the kit uses a **stub** (`src/lib/collectiveStub.ts`) so the UI still builds and runs; the stub’s `getProposals()` returns two sample proposals for demo. See **Setup → Connecting the Collective SDK (GitHub Packages)** above.
 
 ---
 
 ## References
 
-- **Collective SDK (source):** [rsksmart/collective-sdk](https://github.com/rsksmart/collective-sdk). Source for contract overrides, CollectiveSDK, proposals/staking/vote APIs. NPM package: see **Collective SDK NPM package (TODO)** above.  
+- **Collective SDK (source):** [rsksmart/collective-sdk](https://github.com/rsksmart/collective-sdk). Source for contract overrides, CollectiveSDK, proposals/staking/vote APIs. Install from GitHub Packages; see **Collective SDK (GitHub Packages)** above.  
 - **Base kit**: [rsksmart/rsk-wagmi-starter-kit](https://github.com/rsksmart/rsk-wagmi-starter-kit). Wagmi, RainbowKit, Rootstock chains.  
 - **Rootstock**: [Rootstock](https://rootstock.io/) · [Developers Portal](https://dev.rootstock.io/).
 

@@ -1,14 +1,14 @@
 /**
- * Stub for the Collective SDK until @rsksmart/collective-sdk is published on NPM.
- * Read calls return empty/zero data; write calls (stake, vote) throw with an explanatory message.
- * Once the NPM package is published, the starter kit will refer to it and this stub can be removed.
+ * Stub for the Collective SDK when @rsksmart/collective-sdk is not installed (e.g. optional dep from GitHub Packages skipped).
+ * Read calls return empty/zero or sample data; write calls (stake, vote) throw with an explanatory message.
+ * When the package is installed (GITHUB_TOKEN + npm install), useCollective uses the real SDK and this stub is not used.
  */
 
 import type { WalletClient } from "viem";
 import type { Address } from "viem";
 
 const SDK_NOT_INSTALLED =
-  "Collective SDK is not installed. When @rsksmart/collective-sdk is published on npm, add it and wire createCollective in useCollective.";
+  "The Collective SDK is not installed. To stake and vote on-chain, install it from GitHub Packages (see README: set GITHUB_TOKEN with read:packages, then npm install).";
 
 export interface TokenAmount {
   raw: bigint;
@@ -69,14 +69,44 @@ function zeroAmount(symbol: string): TokenAmount {
   return { raw: 0n, formatted: "0", decimals: 18, symbol };
 }
 
+/** Sample proposals for demo only (stub); not on-chain. Remove when using real SDK. */
+const SAMPLE_PROPOSALS: ProposalSummary[] = [
+  {
+    proposalId: "1",
+    index: 0,
+    state: 1,
+    stateLabel: "Active",
+    proposer: "0x0000000000000000000000000000000000000001" as Address,
+    deadline: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // ~7 days from now
+    forVotes: 1_500_000_000_000_000_000n,
+    againstVotes: 200_000_000_000_000_000n,
+    abstainVotes: 0n,
+  },
+  {
+    proposalId: "2",
+    index: 1,
+    state: 1,
+    stateLabel: "Active",
+    proposer: "0x0000000000000000000000000000000000000002" as Address,
+    deadline: BigInt(Math.floor(Date.now() / 1000) + 3 * 24 * 3600), // ~3 days from now
+    forVotes: 0n,
+    againstVotes: 0n,
+    abstainVotes: 500_000_000_000_000_000n,
+  },
+];
+
 /**
  * Returns a stub CollectiveSDK for the starter kit until the real package is published.
- * Read calls return empty/zero data; write calls (stake, vote) throw with an explanatory message.
+ * Read calls return sample/empty data; write calls (stake, vote) throw with an explanatory message.
+ * When using the real SDK, getProposals() will return on-chain proposals instead of samples.
  */
 export function createCollectiveStub(): CollectiveSDK {
   return {
     proposals: {
-      getProposals: async () => ({ totalCount: 0, proposals: [] }),
+      getProposals: async () => ({
+        totalCount: SAMPLE_PROPOSALS.length,
+        proposals: SAMPLE_PROPOSALS,
+      }),
       castVote: async () => {
         throw new Error(SDK_NOT_INSTALLED);
       },

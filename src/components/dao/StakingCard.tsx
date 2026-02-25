@@ -17,6 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import Button from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { Check } from "lucide-react";
+import Loader from "@/components/ui/loader";
 import { getCollectiveErrorTitle, getCollectiveErrorDescription } from "@/lib/errors";
 import {
   simulateApproveRIF,
@@ -43,13 +45,29 @@ function parseStakingAmount(input: string): bigint | null {
   return value > 0n ? value : null;
 }
 
+/** Max decimal places to show for token balances (avoids long floats like 249.99999999999999995). */
+const BALANCE_DISPLAY_DECIMALS = 6;
+/** Label for very small non-zero balances so users don't see "0" after staking. */
+const SMALL_BALANCE_LABEL = "< 0.000001";
+
 function formatTokenBalance(raw: bigint | undefined, decimals: bigint = DECIMALS): string {
   if (raw === undefined) return "—";
+  if (raw === 0n) return "0";
   const divisor = 10n ** decimals;
   const whole = raw / divisor;
   const frac = raw % divisor;
   const fracStr = frac.toString().padStart(Number(decimals), "0").replace(/0+$/, "") || "0";
-  return fracStr === "0" ? whole.toString() : `${whole}.${fracStr}`;
+  const full = fracStr === "0" ? whole.toString() : `${whole}.${fracStr}`;
+  // Avoid long decimal tails; cap to display decimals
+  if (full.includes(".")) {
+    const [a, b] = full.split(".");
+    const trimmed = b.slice(0, BALANCE_DISPLAY_DECIMALS).replace(/0+$/, "") || "0";
+    const display = trimmed === "0" ? a : `${a}.${trimmed}`;
+    // If non-zero raw rounds to "0" at this precision, show a hint so user knows balance exists
+    if (display === "0") return SMALL_BALANCE_LABEL;
+    return display;
+  }
+  return full;
 }
 
 const CARD_BORDER = "border-[#FF9100]/50";
@@ -59,15 +77,23 @@ interface StakingCardProps {
   sdk: CollectiveSDK;
   walletClient: WalletClient | null;
   address: Address;
+  /** When false, the app is using the stub; staking/voting will not send real transactions. */
+  isRealSdk?: boolean;
 }
 
 export default function StakingCard({
   sdk,
   walletClient,
   address,
+  isRealSdk = true,
 }: StakingCardProps): JSX.Element {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState<"stake" | "withdraw" | null>(null);
+  /** Stake flow steps for timeline; null = idle. */
+  const [stakeFlowStep, setStakeFlowStep] = useState<
+    "approving" | "staking" | "confirming" | "success" | null
+  >(null);
+  const [stakeNeededApprove, setStakeNeededApprove] = useState(false);
   const { toast } = useToast();
   const publicClient = usePublicClient({ chainId: ROOTSTOCK_TESTNET_CHAIN_ID });
 
@@ -81,7 +107,7 @@ export default function StakingCard({
     [address]
   );
 
-  const { data: nativeBalance } = useBalance({
+  const { data: nativeBalance, refetch: refetchNative } = useBalance({
     address,
     chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
     query: queryOpts,
@@ -101,6 +127,12 @@ export default function StakingCard({
     chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
     query: { ...queryOpts, enabled: !!address && !!addresses?.stRIF },
   });
+
+  const refetchBalances = useCallback(() => {
+    refetchNative();
+    rifBalanceQuery.refetch();
+    stRifBalanceQuery.refetch();
+  }, [refetchNative, rifBalanceQuery, stRifBalanceQuery]);
 
   const tRbtcFormatted = formatTokenBalance(
     nativeBalance?.value,
@@ -129,17 +161,26 @@ export default function StakingCard({
     setLoading("stake");
     try {
       const info = await sdk.staking.getStakingInfo(address);
-      if (!info.hasAllowance(value)) {
+      const needsApprove = !info.hasAllowance(value);
+      setStakeNeededApprove(needsApprove);
+      setStakeFlowStep(needsApprove ? "approving" : "staking");
+
+      if (needsApprove) {
         await simulateApproveRIF(publicClient, address, addresses, value);
         const approveTx = await sdk.staking.approveRIF(walletClient, value);
         await approveTx.wait();
+        setStakeFlowStep("staking");
       }
       await simulateStakeRIF(publicClient, address, addresses, value, address);
       const result = await sdk.staking.stakeRIF(walletClient, value, address);
+      setStakeFlowStep("confirming");
       await result.wait();
+      refetchBalances();
+      setStakeFlowStep("success");
       toast({ title: "Stake submitted", description: `Tx: ${result.hash.slice(0, 10)}...` });
       setAmount("");
     } catch (e) {
+      setStakeFlowStep(null);
       toast({
         title: getCollectiveErrorTitle(e, "Stake failed"),
         description: getCollectiveErrorDescription(e),
@@ -148,7 +189,7 @@ export default function StakingCard({
     } finally {
       setLoading(null);
     }
-  }, [sdk, walletClient, address, amount, addresses, publicClient, toast]);
+  }, [sdk, walletClient, address, amount, addresses, publicClient, toast, refetchBalances]);
 
   const handleWithdraw = useCallback(async () => {
     if (!walletClient || !addresses || !publicClient) return;
@@ -166,6 +207,7 @@ export default function StakingCard({
       await simulateUnstakeRIF(publicClient, address, addresses, value, address);
       const result = await sdk.staking.unstakeRIF(walletClient, value, address);
       await result.wait();
+      refetchBalances();
       toast({ title: "Withdraw submitted", description: `Tx: ${result.hash.slice(0, 10)}...` });
       setAmount("");
     } catch (e) {
@@ -177,9 +219,43 @@ export default function StakingCard({
     } finally {
       setLoading(null);
     }
-  }, [sdk, walletClient, address, amount, addresses, publicClient, toast]);
+  }, [sdk, walletClient, address, amount, addresses, publicClient, toast, refetchBalances]);
 
   const notReady = !walletClient || !publicClient;
+
+  const scrollToProposals = useCallback(() => {
+    document.getElementById("proposals")?.scrollIntoView({ behavior: "smooth" });
+    setStakeFlowStep(null);
+  }, []);
+
+  type StepKey = "approve" | "stake" | "confirm" | "success";
+  const stepOrder: StepKey[] = stakeNeededApprove
+    ? ["approve", "stake", "confirm", "success"]
+    : ["stake", "confirm", "success"];
+  const stepIndex = stakeFlowStep
+    ? stepOrder.indexOf(
+        stakeFlowStep === "approving"
+          ? "approve"
+          : stakeFlowStep === "staking"
+            ? "stake"
+            : stakeFlowStep === "confirming"
+              ? "confirm"
+              : "success"
+      )
+    : -1;
+
+  const timelineSteps = stakeNeededApprove
+    ? [
+        { key: "approve" as const, label: "Approve RIF" },
+        { key: "stake" as const, label: "Stake RIF" },
+        { key: "confirm" as const, label: "Confirm transaction" },
+        { key: "success" as const, label: "Complete" },
+      ]
+    : [
+        { key: "stake" as const, label: "Stake RIF" },
+        { key: "confirm" as const, label: "Confirm transaction" },
+        { key: "success" as const, label: "Complete" },
+      ];
 
   return (
     <Card
@@ -194,7 +270,56 @@ export default function StakingCard({
           tRBTC: {tRbtcFormatted} · RIF: {rifFormatted} · stRIF: {stRifFormatted}
         </p>
       </CardHeader>
+      {!isRealSdk && (
+        <div className="mx-6 mb-2 p-3 rounded-lg border border-amber-500/60 bg-amber-950/30 text-amber-200 text-sm">
+          Staking and voting are disabled because the Collective SDK is not installed. To enable them, install the SDK from GitHub Packages: set <code className="bg-black/30 px-1 rounded">GITHUB_TOKEN</code> (with <code className="bg-black/30 px-1 rounded">read:packages</code>), then run <code className="bg-black/30 px-1 rounded">npm install</code>. See the README for details.
+        </div>
+      )}
       <CardContent className="flex flex-col gap-4">
+        {stakeFlowStep !== null && (
+          <div className="rounded-lg border border-[#FF9100]/40 bg-[#0a0a0a] p-4">
+            <p className="mb-3 text-sm font-medium text-[#FAF9F5]">Stake progress</p>
+            <ul className="space-y-2">
+              {timelineSteps.map((step, i) => {
+                const done = i < stepIndex || stakeFlowStep === "success";
+                const current = i === stepIndex && stakeFlowStep !== "success";
+                return (
+                  <li
+                    key={step.key}
+                    className="flex items-center gap-2 text-sm text-[#FAF9F5]/90"
+                  >
+                    {done ? (
+                      <Check className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+                    ) : current ? (
+                      <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+                        <Loader color="#FF9100" height={16} width={16} />
+                      </span>
+                    ) : (
+                      <span className="h-4 w-4 shrink-0 rounded-full border border-[#FAF9F5]/40" aria-hidden />
+                    )}
+                    <span className={current ? "text-[#FAF9F5]" : "text-[#FAF9F5]/70"}>
+                      {step.label}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            {stakeFlowStep === "success" && (
+              <div className="mt-4 flex flex-col gap-2 border-t border-[#FF9100]/30 pt-4">
+                <p className="text-sm font-medium text-emerald-400">Stake complete!</p>
+                <p className="text-sm text-[#FAF9F5]/80">
+                  Your stRIF balance has been updated. Use your voting power below.
+                </p>
+                <Button
+                  onClick={scrollToProposals}
+                  className="w-fit border-[#FF9100] text-[#FF9100] hover:bg-[#FF9100] hover:text-black"
+                >
+                  Vote on proposals
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           <label className="text-sm text-[#FAF9F5]/90">Amount (wei, integer)</label>
           <Input
