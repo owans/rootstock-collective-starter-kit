@@ -13,6 +13,7 @@ import {
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { getErrorMessage } from "@/lib/errors";
 import { ERC1155_ADDRESS } from "@/lib/constants";
 import Loader from "@/components/ui/loader";
 import { abi } from "@/assets/abis/ERC1155abi";
@@ -70,10 +71,9 @@ export default function ERC1155Tab(): JSX.Element {
       refetch();
       refetch2();
     } catch (error) {
-      console.log(error);
       toast({
         title: "Error",
-        description: "Failed to mint tokens",
+        description: getErrorMessage(error, "Failed to mint tokens"),
         variant: "destructive",
       });
       setLoading(false);
@@ -105,7 +105,7 @@ export default function ERC1155Tab(): JSX.Element {
             <p>Select the token type you'd like to mint:</p>
           </div>
           <Select
-            onValueChange={(value) => setValue(parseInt(value))}
+            onValueChange={(value) => setValue(parseInt(value, 10))}
             disabled={loading}
           >
             <SelectTrigger className="w-[90%] mx-auto">
@@ -137,8 +137,10 @@ export default function ERC1155Tab(): JSX.Element {
                   <Loader />
                 ) : isError ? (
                   "error"
-                ) : (
+                ) : data !== undefined && data !== null ? (
                   Number(data).toLocaleString("en-US")
+                ) : (
+                  "—"
                 )
               ) : (
                 0
@@ -153,8 +155,10 @@ export default function ERC1155Tab(): JSX.Element {
                   <Loader />
                 ) : isError2 ? (
                   "error"
-                ) : (
+                ) : data2 !== undefined && data2 !== null ? (
                   Number(data2).toLocaleString("en-US")
+                ) : (
+                  "—"
                 )
               ) : (
                 0

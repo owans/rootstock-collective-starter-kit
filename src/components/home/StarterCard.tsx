@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Card,
   CardDescription,
@@ -12,11 +12,9 @@ export default function StarterCard({
 }: {
   starter: StarterProps;
 }): JSX.Element {
-  const navigate = useNavigate();
-
   return (
-    <button onClick={() => navigate(starter.link)}>
-      <Card className="hover:border-primary/70 transition-all hover:opacity-80">
+    <Link to={starter.link} className="block">
+      <Card className="hover:border-primary/70 transition-all hover:opacity-80 cursor-pointer">
         <CardHeader>
           <CardTitle>{starter.name}</CardTitle>
           <CardDescription className="line-clamp-3">
@@ -24,6 +22,6 @@ export default function StarterCard({
           </CardDescription>
         </CardHeader>
       </Card>
-    </button>
+    </Link>
   );
 }

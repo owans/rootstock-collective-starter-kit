@@ -40,6 +40,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Build works with or without VITE_WC_PROJECT_ID (forks may not have the secret set)
       - name: Build
         run: npm run build
         env:

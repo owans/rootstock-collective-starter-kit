@@ -24,7 +24,7 @@ A sample dApp built on the [Rootstock Collective SDK](https://github.com/rsksmar
 - **DAO UI**: Connect wallet → Stake/withdraw RIF → List active proposals → Vote (with simulation before every write).
 - **Contract overrides**: Single source of Collective contract addresses for Testnet in `constants/contracts.ts` (governor, treasury, RIF, stRIF, etc.).
 - **Rootstock Editor Mode** styling: Black background (`#000000`), off-white text (`#FAF9F5`), orange (`#FF9100`) for active states and primary actions.
-- **Security**: Simulate transactions before sending; explicit handling of “Insufficient VP” and other SDK errors.
+- **Security**: Simulate transactions before sending; simulation failures (e.g. insufficient balance, revert) are caught and shown as clear messages. Explicit handling of “Insufficient VP” and other SDK errors in the UI.
 
 ---
 
@@ -100,7 +100,7 @@ The layout will look like this:
 │   │   │   └── VoteButton.tsx
 │   │   └── ui/                   # Shadcn etc.
 │   ├── lib
-│   │   ├── collectiveStub.ts    # Stub until @rsksmart/collective-sdk is on NPM (see Setup)
+│   │   ├── collectiveStub.ts    # Stub when SDK not installed (see Setup → GitHub Packages)
 │   │   └── utils
 │   │       └── RootstockTestnet.ts
 │   └── pages
@@ -184,7 +184,17 @@ With an API key, the app uses the [Rootstock RPC API](https://dev.rootstock.io/d
    ```
    Leave this empty or omit it to use the public node. See [Getting Started with the Rootstock RPC API](https://dev.rootstock.io/developers/rpc-api/rootstock/setup) for more.
 
-No other keys are required for this Collective DAO starter.
+#### Arka paymaster API key (optional, Etherspot demo)
+
+The Account Abstraction / Etherspot demo uses the Arka paymaster. To use your own key, set in `.env`:
+
+```shell
+VITE_ARKA_PUBLIC_KEY='your-arka-key'
+```
+
+Leave empty to use the demo fallback. Only needed if you run the Etherspot demo; the Collective DAO flows do not use it.
+
+No other keys are required for the Collective DAO flows.
 
 **How the starter kit uses the Collective SDK for writes**  
 The Collective SDK’s write methods (`stakeRIF`, `unstakeRIF`, `castVote`, etc.) take a **WalletClient** (from viem) so the SDK can request a signature. In this starter kit we use the SDK correctly as a **browser dApp**: the WalletClient comes from the **user’s connected wallet** (Wagmi + RainbowKit). The user approves each transaction in their wallet; the app never has access to a private key. No `PRIVATE_KEY` is required in `.env`; only `VITE_WC_PROJECT_ID` for WalletConnect.
@@ -268,7 +278,7 @@ All write methods take a **WalletClient** (from Wagmi `useWalletClient()`). The 
 
 ### Simulation before write
 
-Every write (approve, stake, withdraw, vote) is simulated first so the user does not submit a transaction that would revert. Simulation helpers live in **`src/lib/simulation.ts`** and use Viem `publicClient.simulateContract` with minimal ABIs from **`src/lib/collectiveAbis.ts`**:
+Every write (approve, stake, withdraw, vote) is simulated first so the user does not submit a transaction that would revert. Simulation helpers live in **`src/lib/simulation.ts`** and use Viem `publicClient.simulateContract` with minimal ABIs from **`src/lib/collectiveAbis.ts`**. All `simulateContract` calls are wrapped in try/catch; failures (e.g. insufficient balance, contract revert) throw with a user-facing message so the UI can show actionable feedback.
 
 | Simulation function | Used before | Contract / function simulated |
 |---------------------|-------------|------------------------------|

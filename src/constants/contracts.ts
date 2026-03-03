@@ -29,22 +29,25 @@ function addr(hex: string): `0x${string}` {
   return getAddress(hex) as `0x${string}`;
 }
 
+export type CollectiveContractAddressMap = {
+  governor: `0x${string}`;
+  treasury: `0x${string}`;
+  backersManager: `0x${string}`;
+  builderRegistry: `0x${string}`;
+  RIF: `0x${string}`;
+  stRIF: `0x${string}`;
+  USDRIF: `0x${string}`;
+};
+
 /**
  * Collective contract addresses for Rootstock Testnet (Chain ID: 31).
  * Shape matches SDK ContractAddresses (Collective + token addresses).
  * Replace any placeholder (0x0...) with your deployment if different.
+ * Type is narrowed to the known chain ID so unsupported chains are caught at build time.
  */
 export const COLLECTIVE_CONTRACT_ADDRESSES: Record<
-  number,
-  {
-    governor: `0x${string}`;
-    treasury: `0x${string}`;
-    backersManager: `0x${string}`;
-    builderRegistry: `0x${string}`;
-    RIF: `0x${string}`;
-    stRIF: `0x${string}`;
-    USDRIF: `0x${string}`;
-  }
+  typeof ROOTSTOCK_TESTNET_CHAIN_ID,
+  CollectiveContractAddressMap
 > = {
   [ROOTSTOCK_TESTNET_CHAIN_ID]: {
     // Collective governance (Rootstock Collective DAO Testnet)
@@ -60,4 +63,7 @@ export const COLLECTIVE_CONTRACT_ADDRESSES: Record<
 };
 
 /** Type for the override object passed to CollectiveSDK (chainId -> addresses). */
-export type CollectiveContractAddressesOverride = typeof COLLECTIVE_CONTRACT_ADDRESSES;
+export type CollectiveContractAddressesOverride = Record<
+  typeof ROOTSTOCK_TESTNET_CHAIN_ID,
+  CollectiveContractAddressMap
+>;

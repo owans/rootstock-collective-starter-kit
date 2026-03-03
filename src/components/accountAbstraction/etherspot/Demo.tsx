@@ -14,6 +14,7 @@ import { PrimeSdk, EtherspotBundler } from "@etherspot/prime-sdk";
 import { formatAddress } from "@/lib/utils";
 import { Check, Copy } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { getErrorMessage } from "@/lib/errors";
 import { isAddress } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { parseEther } from "viem/utils";
@@ -137,7 +138,8 @@ export default function Demo() {
 
         setLoadingOperation(true);
 
-        const apiKey = 'arka_public_key';
+        const apiKey =
+          import.meta.env.VITE_ARKA_PUBLIC_KEY ?? "arka_public_key";
         const chainID = 31;
 
         try {
@@ -164,7 +166,11 @@ export default function Demo() {
         } catch (error) {
             toast({
                 title: "Error",
-                description: "Failed to estimate transaction cost.",
+                description: getErrorMessage(
+                    error,
+                    "Failed to estimate transaction cost."
+                ),
+                variant: "destructive",
             });
         } finally {
             setLoadingOperation(false);

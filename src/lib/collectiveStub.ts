@@ -59,7 +59,7 @@ export interface CollectiveSDK {
   };
   readonly staking: {
     getStakingInfo: (userAddress: Address) => Promise<StakingInfo>;
-    approveRIF: (walletClient: WalletClient, amount: bigint) => Promise<{ hash: `0x${string}`; wait: () => Promise<unknown> }>;
+    approveRIF: (walletClient: WalletClient, amount: bigint) => Promise<{ hash: `0x${string}`; wait: (confirmations?: number) => Promise<unknown> }>;
     stakeRIF: (walletClient: WalletClient, amount: bigint, delegatee: Address) => Promise<{ hash: `0x${string}`; wait: (c?: number) => Promise<unknown> }>;
     unstakeRIF: (walletClient: WalletClient, amount: bigint, recipient: Address) => Promise<{ hash: `0x${string}`; wait: (c?: number) => Promise<unknown> }>;
   };
@@ -69,31 +69,34 @@ function zeroAmount(symbol: string): TokenAmount {
   return { raw: 0n, formatted: "0", decimals: 18, symbol };
 }
 
-/** Sample proposals for demo only (stub); not on-chain. Remove when using real SDK. */
-const SAMPLE_PROPOSALS: ProposalSummary[] = [
-  {
-    proposalId: "1",
-    index: 0,
-    state: 1,
-    stateLabel: "Active",
-    proposer: "0x0000000000000000000000000000000000000001" as Address,
-    deadline: BigInt(Math.floor(Date.now() / 1000) + 7 * 24 * 3600), // ~7 days from now
-    forVotes: 1_500_000_000_000_000_000n,
-    againstVotes: 200_000_000_000_000_000n,
-    abstainVotes: 0n,
-  },
-  {
-    proposalId: "2",
-    index: 1,
-    state: 1,
-    stateLabel: "Active",
-    proposer: "0x0000000000000000000000000000000000000002" as Address,
-    deadline: BigInt(Math.floor(Date.now() / 1000) + 3 * 24 * 3600), // ~3 days from now
-    forVotes: 0n,
-    againstVotes: 0n,
-    abstainVotes: 500_000_000_000_000_000n,
-  },
-];
+/** Build sample proposals with deadlines relative to current time (so they don't appear expired). */
+function getSampleProposals(): ProposalSummary[] {
+  const now = Math.floor(Date.now() / 1000);
+  return [
+    {
+      proposalId: "1",
+      index: 0,
+      state: 1,
+      stateLabel: "Active",
+      proposer: "0x0000000000000000000000000000000000000001" as Address,
+      deadline: BigInt(now + 7 * 24 * 3600),
+      forVotes: 1_500_000_000_000_000_000n,
+      againstVotes: 200_000_000_000_000_000n,
+      abstainVotes: 0n,
+    },
+    {
+      proposalId: "2",
+      index: 1,
+      state: 1,
+      stateLabel: "Active",
+      proposer: "0x0000000000000000000000000000000000000002" as Address,
+      deadline: BigInt(now + 3 * 24 * 3600),
+      forVotes: 0n,
+      againstVotes: 0n,
+      abstainVotes: 500_000_000_000_000_000n,
+    },
+  ];
+}
 
 /**
  * Returns a stub CollectiveSDK for the starter kit until the real package is published.
@@ -103,10 +106,10 @@ const SAMPLE_PROPOSALS: ProposalSummary[] = [
 export function createCollectiveStub(): CollectiveSDK {
   return {
     proposals: {
-      getProposals: async () => ({
-        totalCount: SAMPLE_PROPOSALS.length,
-        proposals: SAMPLE_PROPOSALS,
-      }),
+      getProposals: async () => {
+        const proposals = getSampleProposals();
+        return { totalCount: proposals.length, proposals };
+      },
       castVote: async () => {
         throw new Error(SDK_NOT_INSTALLED);
       },
