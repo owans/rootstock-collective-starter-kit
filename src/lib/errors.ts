@@ -52,3 +52,11 @@ export function getCollectiveErrorDescription(error: unknown): string {
   if (isSdkNotInstalledError(error)) return SDK_NOT_INSTALLED_MESSAGE;
   return error instanceof Error ? error.message : String(error);
 }
+
+/**
+ * Returns a user-facing error message for toasts (e.g. mint, estimate).
+ * Use when you want to surface the real error message with a fallback.
+ */
+export function getErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}

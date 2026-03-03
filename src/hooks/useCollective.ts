@@ -64,7 +64,7 @@ export function useCollective(): UseCollectiveResult {
     import("@rsksmart/collective-sdk")
       .then((m) => {
         const Ctor = m.CollectiveSDK;
-        setRealSDK(Ctor ? (() => Ctor as RealSDKConstructor) : null);
+        setRealSDK(Ctor ? (() => Ctor as unknown as RealSDKConstructor) : null);
       })
       .catch(() => setRealSDK(null));
   }, []);

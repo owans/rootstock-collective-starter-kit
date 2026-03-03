@@ -33,16 +33,18 @@ export default function CustomAccountModal({
   onClose,
 }: CustomAccountModalProps): JSX.Element {
   const { disconnect } = useDisconnect();
-  const { data: balance } = useBalance({
+  const { data: balance, isLoading: isBalanceLoading } = useBalance({
     address: address as `0x${string}`,
     chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
   });
   const [copied, setCopied] = useState(false);
 
-  const displayBalance = formatNativeBalanceDisplay(
-    balance?.formatted,
-    balance?.symbol ?? "tRBTC"
-  );
+  const displayBalance = isBalanceLoading
+    ? "Loading…"
+    : formatNativeBalanceDisplay(
+        balance?.formatted,
+        balance?.symbol ?? "tRBTC"
+      );
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(address);

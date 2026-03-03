@@ -6,6 +6,7 @@ import Loader from "@/components/ui/loader";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { abi } from "@/assets/abis/ERC20abi";
 import { useToast } from "@/components/ui/use-toast";
+import { getErrorMessage } from "@/lib/errors";
 import { ERC20_ADDRESS } from "@/lib/constants";
 import { rainbowkitConfig } from "@/config/rainbowkitConfig";
 import { waitForTransactionReceipt } from "wagmi/actions";
@@ -49,11 +50,10 @@ export default function ERC20Tab(): JSX.Element {
     } catch (e) {
       toast({
         title: "Error",
-        description: "Failed to mint tRSK tokens",
+        description: getErrorMessage(e, "Failed to mint tRSK tokens"),
         variant: "destructive",
       });
       setLoading(false);
-      console.error(e);
     }
   };
 
@@ -98,8 +98,10 @@ export default function ERC20Tab(): JSX.Element {
                   <Loader />
                 ) : isError ? (
                   "error"
-                ) : (
+                ) : data !== undefined && data !== null ? (
                   Number(data).toLocaleString("en-US")
+                ) : (
+                  "—"
                 )
               ) : (
                 0

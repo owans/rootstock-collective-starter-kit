@@ -1,9 +1,8 @@
 import Button from "@/components/ui/button";
-// import { Input } from "@/components/ui/input";
-// import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import CustomConnectButton from "@/components/dao/CustomConnectButton";
 import { useToast } from "@/components/ui/use-toast";
+import { getErrorMessage } from "@/lib/errors";
 import { useState } from "react";
 import { useAccount, useWriteContract, useReadContract } from "wagmi";
 import { abi } from "@/assets/abis/ERC721abi";
@@ -47,10 +46,9 @@ export default function ERC721Tab(): JSX.Element {
 
       refetch();
     } catch (error) {
-      console.log(error);
       toast({
         title: "Error",
-        description: "Failed to mint NFT",
+        description: getErrorMessage(error, "Failed to mint NFT"),
         variant: "destructive",
       });
       setLoading(false);
@@ -98,19 +96,22 @@ export default function ERC721Tab(): JSX.Element {
                   <Loader />
                 ) : isError ? (
                   "error"
-                ) : (
+                ) : data !== undefined && data !== null ? (
                   Number(data as bigint)
+                ) : (
+                  "—"
                 )
               ) : (
                 0
               )}
             </span>
           </div>
-          {Number(data as bigint) > 0 ? (
+          {data !== undefined && data !== null && Number(data as bigint) > 0 ? (
             <div className="mt-2">
               <a
                 href="https://rootstock-testnet.blockscout.com/token/0x65C955e31F8BD0964127a0a2f4bc84ab298c71BE?tab=inventory"
                 target="_blank"
+                rel="noopener noreferrer"
                 className="text-gray-500 underline mt-5"
               >
                 See NFT(s)
