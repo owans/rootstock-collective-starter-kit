@@ -3,9 +3,9 @@
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/rsksmart/rsk-wagmi-starter-kit/badge)](https://scorecard.dev/viewer/?uri=github.com/rsksmart/rsk-wagmi-starter-kit)
 [![CodeQL](https://github.com/rsksmart/rsk-wagmi-starter-kit/workflows/CodeQL/badge.svg)](https://github.com/rsksmart/rsk-wagmi-starter-kit/actions?query=workflow%3ACodeQL)
 
-A sample dApp built on the [Rootstock Collective SDK](https://github.com/rsksmart/collective-sdk). It shows staking RIF for voting power, listing active proposals, and casting votes on Rootstock Testnet. This repo is the reference for the developers-portal guide [Implementing On-Chain Voting with Collective SDK](https://dev.rootstock.io/).
+A sample dApp built on the [Rootstock Collective SDK](https://github.com/rsksmart/collective-sdk). It shows staking RIF for voting power, listing active proposals, and casting votes on Rootstock. This repo is the reference for the developers-portal guide [Implementing On-Chain Voting with Collective SDK](https://dev.rootstock.io/).
 
-**Network:** Rootstock Testnet (Chain ID: 31). All Collective flows in this kit use Testnet.
+**Networks:** Rootstock Mainnet (Chain ID: 30) and Testnet (Chain ID: 31). The app uses the connected wallet’s chain; proposals and staking work on either network.
 
 ---
 
@@ -22,7 +22,7 @@ A sample dApp built on the [Rootstock Collective SDK](https://github.com/rsksmar
 - **Wallet connection**: Wagmi + RainbowKit (from [rsk-wagmi-starter-kit](https://github.com/rsksmart/rsk-wagmi-starter-kit)). Custom account modal for small tRBTC display.
 - **Collective SDK surface**: One hook (`useCollective`) exposing **proposals** (getProposals, castVote), **staking** (getStakingInfo, approveRIF, stakeRIF, unstakeRIF).
 - **DAO UI**: Connect wallet → Stake/withdraw RIF → List active proposals → Vote (with simulation before every write).
-- **Contract overrides**: Single source of Collective contract addresses for Testnet in `constants/contracts.ts` (governor, treasury, RIF, stRIF, etc.).
+- **Contract overrides**: Collective contract addresses for Mainnet and Testnet in `constants/contracts.ts` (governor, treasury, RIF, stRIF, etc.). Replace Mainnet placeholders when the Collective is deployed on Mainnet.
 - **Rootstock Editor Mode** styling: Black background (`#000000`), off-white text (`#FAF9F5`), orange (`#FF9100`) for active states and primary actions.
 - **Security**: Simulate transactions before sending; simulation failures (e.g. insufficient balance, revert) are caught and shown as clear messages. Explicit handling of “Insufficient VP” and other SDK errors in the UI.
 
@@ -89,7 +89,7 @@ The layout will look like this:
 │   │   ├── rainbowkitConfig.ts
 │   │   └── wagmiProviderConfig.ts
 │   ├── constants
-│   │   └── contracts.ts          # Collective contract-address overrides (Testnet)
+│   │   └── contracts.ts          # Collective contract-address overrides (Mainnet and Testnet)
 │   ├── hooks
 │   │   └── useCollective.ts      # Web3CoreLayer + CollectiveSDK; returns proposals, staking, vote
 │   ├── components
@@ -102,7 +102,7 @@ The layout will look like this:
 │   ├── lib
 │   │   ├── collectiveStub.ts    # Fallback when SDK unavailable
 │   │   └── utils
-│   │       └── RootstockTestnet.ts
+│   │       └── RootstockChains.ts   # Mainnet (30) and Testnet (31); RPC and chain config
 │   └── pages
 ├── README.md                     # This file
 └── package.json
@@ -186,7 +186,7 @@ The **connected wallet** must hold Testnet funds: **tRBTC** for gas, and **RIF**
 npm run dev
 ```
 
-Open the app and connect a wallet on **Rootstock Testnet (Chain ID: 31)**. The Collective flows (staking, proposals, voting) are intended for Testnet only in this kit.
+Open the app and connect a wallet on **Rootstock Mainnet (Chain ID: 30) or Testnet (Chain ID: 31)**. Staking, proposals, and voting work on either network.
 
 ---
 
@@ -199,7 +199,7 @@ This sample dApp focuses on **participation** (stake RIF, list proposals, cast v
 | **Staking** | Yes: `approveRIF`, `stakeRIF`, `unstakeRIF`, `getStakingInfo`; UI in StakingCard; WalletClient from connected wallet | Yes: same APIs; SDK accepts WalletClient (browser or Node) |
 | **Proposals (read)** | Yes: `getProposals`; UI in ProposalList | Yes |
 | **Voting** | Yes: `castVote`; UI in VoteButton; simulate before write; Insufficient VP handling | Yes: same APIs |
-| **Contract overrides** | Yes: `constants/contracts.ts` (governor, treasury, RIF, stRIF, etc.) for Testnet; passed into `createCollective` | Yes: SDK supports contract-address overrides |
+| **Contract overrides** | Yes: `constants/contracts.ts` (governor, treasury, RIF, stRIF, etc.) for Mainnet and Testnet; passed into SDK | Yes: SDK supports contract-address overrides |
 | **Wallet / signer** | Yes: Wagmi + RainbowKit; user connects wallet in browser; WalletClient passed to SDK for writes. No `PRIVATE_KEY` in .env | Yes: SDK expects a WalletClient for writes (e.g. from Wagmi in browser, or from a key in Node/scripts) |
 | **Claim rewards** | No | Yes: `holdings.claimRewards` |
 | **Vault deposit/withdraw** | No | Yes: supported by SDK |

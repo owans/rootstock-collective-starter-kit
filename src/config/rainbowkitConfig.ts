@@ -1,12 +1,14 @@
-// Collective DAO Starter Kit: hardcoded to Rootstock Testnet (Chain ID: 31) only.
+// Collective DAO Starter Kit: Rootstock Mainnet (30) and Testnet (31). No hardcoded network.
 // VITE_WC_PROJECT_ID is required for wallet connection.
-// All wagmi RPC (including RainbowKit account modal balance) uses the transport below.
 import { getDefaultWallets } from "@rainbow-me/rainbowkit";
-import {
-  rsktestnet,
-  getRootstockTestnetRpcUrl,
-} from "@/lib/utils/RootstockTestnet";
 import { createConfig, http } from "wagmi";
+import {
+  rootstockMainnet,
+  rootstockTestnet,
+  getRootstockRpcUrl,
+  ROOTSTOCK_MAINNET_CHAIN_ID,
+  ROOTSTOCK_TESTNET_CHAIN_ID,
+} from "@/lib/utils/RootstockChains";
 
 const rawProjectId = import.meta.env.VITE_WC_PROJECT_ID;
 const projectId =
@@ -18,17 +20,16 @@ if (projectId === "" && typeof window !== "undefined") {
   console.warn("[RainbowKit] VITE_WC_PROJECT_ID missing. Add to .env (see README).");
 }
 
-const rpcUrl = getRootstockTestnetRpcUrl();
-
 const { connectors } = getDefaultWallets({
   appName: "Rootstock Collective DAO",
   projectId,
 });
 
 export const rainbowkitConfig = createConfig({
-  chains: [rsktestnet],
+  chains: [rootstockMainnet, rootstockTestnet],
   connectors,
   transports: {
-    [rsktestnet.id]: http(rpcUrl),
+    [ROOTSTOCK_MAINNET_CHAIN_ID]: http(getRootstockRpcUrl(ROOTSTOCK_MAINNET_CHAIN_ID)),
+    [ROOTSTOCK_TESTNET_CHAIN_ID]: http(getRootstockRpcUrl(ROOTSTOCK_TESTNET_CHAIN_ID)),
   },
 });

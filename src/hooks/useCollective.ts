@@ -1,5 +1,6 @@
 /**
- * Initializes Collective SDK (real from GitHub Packages if installed, else stub). Uses chainId 31 and constants/contracts.ts.
+ * Initializes Collective SDK for the connected Rootstock chain (Mainnet 30 or Testnet 31).
+ * Uses chain from wallet; no hardcoded network.
  */
 
 import { useMemo, useState, useEffect } from "react";
@@ -7,14 +8,16 @@ import { useAccount, useWalletClient } from "wagmi";
 import type { WalletClient } from "viem";
 import { createCollectiveStub } from "@/lib/collectiveStub";
 import type { CollectiveSDK } from "@/lib/collectiveStub";
+import { COLLECTIVE_CONTRACT_ADDRESSES } from "@/constants/contracts";
 import {
-  ROOTSTOCK_TESTNET_CHAIN_ID,
-  COLLECTIVE_CONTRACT_ADDRESSES,
-} from "@/constants/contracts";
-import { getRootstockTestnetRpcUrl } from "@/lib/utils/RootstockTestnet";
+  getRootstockRpcUrl,
+  isRootstockChain,
+  ROOTSTOCK_CHAIN_IDS,
+  type RootstockChainId,
+} from "@/lib/utils/RootstockChains";
 
-/** Rootstock Testnet chain ID. */
-export const COLLECTIVE_CHAIN_ID = ROOTSTOCK_TESTNET_CHAIN_ID;
+/** Supported Collective chains (Mainnet and Testnet). */
+export const COLLECTIVE_CHAIN_IDS = ROOTSTOCK_CHAIN_IDS;
 
 /** Result when SDK is not ready (wrong chain or no wallet). */
 export interface UseCollectiveNotReady {
@@ -33,6 +36,7 @@ export interface UseCollectiveReady {
   address: `0x${string}`;
   error: null;
   isRealSdk: boolean;
+  chainId: RootstockChainId;
 }
 
 export type UseCollectiveResult = UseCollectiveNotReady | UseCollectiveReady;
@@ -59,23 +63,27 @@ export function useCollective(): UseCollectiveResult {
   }, []);
 
   return useMemo((): UseCollectiveResult => {
-    const isCorrectChain = chain?.id === COLLECTIVE_CHAIN_ID;
-    if (!address || !isCorrectChain) {
+    const chainId = chain?.id;
+    const supported = chainId !== undefined && isRootstockChain(chainId);
+    if (!address || !supported) {
+      const errorMsg = !address
+        ? "Connect your wallet."
+        : "Switch to Rootstock (Mainnet or Testnet) to use the DAO.";
       return {
         isReady: false,
         sdk: null,
         walletClient: null,
         address: undefined,
-        error: !address ? "Connect your wallet." : "Switch to Rootstock Testnet (Chain ID: 31).",
+        error: errorMsg,
       };
     }
 
-    const rpcUrl = getRootstockTestnetRpcUrl();
-    const contractAddresses = COLLECTIVE_CONTRACT_ADDRESSES[ROOTSTOCK_TESTNET_CHAIN_ID];
+    const rpcUrl = getRootstockRpcUrl(chainId);
+    const contractAddresses = COLLECTIVE_CONTRACT_ADDRESSES[chainId];
 
     const sdk: CollectiveSDK = RealSDK
       ? (new RealSDK({
-          chainId: ROOTSTOCK_TESTNET_CHAIN_ID as 31,
+          chainId,
           rpcUrl,
           contractAddresses,
         }) as CollectiveSDK)
@@ -88,6 +96,7 @@ export function useCollective(): UseCollectiveResult {
       address,
       error: null,
       isRealSdk: !!RealSDK,
+      chainId,
     };
   }, [address, chain?.id, walletClient, RealSDK]);
 }

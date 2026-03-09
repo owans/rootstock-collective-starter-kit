@@ -21,7 +21,7 @@ const starters: StarterProps[] = [
   {
     name: "Collective DAO: Stake & Vote",
     description:
-      "Rootstock Collective DAO Starter Kit. Connect wallet, stake RIF, view active proposals, and vote on Rootstock Testnet using the Collective SDK.",
+      "Rootstock Collective DAO Starter Kit. Connect wallet, stake RIF, view active proposals, and vote on Rootstock (Mainnet or Testnet) using the Collective SDK.",
     link: "/",
   },
 ];
