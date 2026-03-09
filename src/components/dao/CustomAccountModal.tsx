@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useBalance, useDisconnect } from "wagmi";
-import { ROOTSTOCK_TESTNET_CHAIN_ID } from "@/constants/contracts";
+import { useAccount, useBalance, useDisconnect } from "wagmi";
 import { formatNativeBalanceDisplay } from "@/lib/formatBalance";
 
 const FOCUSABLE_SELECTOR =
@@ -28,10 +27,12 @@ export default function CustomAccountModal({
   address,
   onClose,
 }: CustomAccountModalProps): JSX.Element {
+  const { chain } = useAccount();
   const { disconnect } = useDisconnect();
+  const chainId = chain?.id;
   const { data: balance, isLoading: isBalanceLoading } = useBalance({
     address: address as `0x${string}`,
-    chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
+    chainId,
   });
   const [copied, setCopied] = useState(false);
 
@@ -39,7 +40,7 @@ export default function CustomAccountModal({
     ? "Loading…"
     : formatNativeBalanceDisplay(
         balance?.formatted,
-        balance?.symbol ?? "tRBTC"
+        balance?.symbol ?? (chainId === 30 ? "RBTC" : "tRBTC")
       );
 
   const handleCopy = useCallback(() => {

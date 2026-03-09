@@ -6,7 +6,7 @@ import type { WalletClient } from "viem";
 import type { Address } from "viem";
 
 const SDK_NOT_INSTALLED =
-  "Collective SDK not installed. Install from GitHub Packages: GITHUB_TOKEN with read:packages, then npm install. See README.";
+  "Collective SDK not installed. Run npm install. If the package is from GitHub Packages (e.g. pre-release), set GITHUB_TOKEN with read:packages, then run npm install. See the README.";
 
 export interface TokenAmount {
   raw: bigint;

@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import type { CollectiveSDK, ProposalsListResult } from "@/lib/collectiveStub";
 import type { WalletClient } from "viem";
 import type { Address } from "viem";
+import type { RootstockChainId } from "@/lib/utils/RootstockChains";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatProposalId, formatVoteOrAmount } from "@/lib/formatDisplay";
 import VoteButton from "./VoteButton";
@@ -18,12 +19,14 @@ interface ProposalListProps {
   sdk: CollectiveSDK;
   walletClient: WalletClient | null;
   address: Address;
+  chainId: RootstockChainId;
 }
 
 export default function ProposalList({
   sdk,
   walletClient,
   address: _address,
+  chainId,
 }: ProposalListProps): JSX.Element {
   const [result, setResult] = useState<ProposalsListResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,31 +53,39 @@ export default function ProposalList({
   }, [sdk]);
 
   if (loading) {
-    return <div className="text-[#FAF9F5] py-8">Loading proposals…</div>;
+    return (
+      <div className="text-[#FAF9F5] py-8" role="status" aria-live="polite">
+        Loading proposals…
+      </div>
+    );
   }
   if (error) {
     return (
-      <div className="text-red-400 py-4">Failed to load proposals: {error}</div>
+      <div className="text-red-400 py-4" role="alert">
+        Failed to load proposals: {error}
+      </div>
     );
   }
   if (!result || result.proposals.length === 0) {
     return (
-      <div className="text-[#FAF9F5]/80 py-8">
+      <div className="text-[#FAF9F5]/80 py-8" role="status">
         No proposals yet. This kit supports viewing and voting only; create
-        proposals elsewhere on Rootstock Testnet.
+        proposals elsewhere on Rootstock.
       </div>
     );
   }
 
   return (
-    <ul className="space-y-4">
+    <ul className="space-y-4" aria-label="Active proposals">
       {result.proposals.map((proposal: ProposalsListResult["proposals"][number]) => (
         <li key={proposal.proposalId}>
           <Card
             className={`bg-[#000000] border ${CARD_BORDER} text-[#FAF9F5]`}
+            role="article"
+            aria-labelledby={`proposal-title-${proposal.proposalId}`}
           >
             <CardHeader className="pb-2">
-              <CardTitle className="text-[#FAF9F5] text-lg">
+              <CardTitle id={`proposal-title-${proposal.proposalId}`} className="text-[#FAF9F5] text-lg">
                 Proposal {formatProposalId(proposal.proposalId)}
               </CardTitle>
               <div className="flex flex-wrap gap-2 text-xs text-[#FAF9F5]/70">
@@ -92,6 +103,7 @@ export default function ProposalList({
                 sdk={sdk}
                 walletClient={walletClient}
                 address={_address}
+                chainId={chainId}
               />
             </CardContent>
           </Card>

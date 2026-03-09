@@ -20,23 +20,31 @@ import {
   simulateStakeRIF,
   simulateUnstakeRIF,
 } from "@/lib/simulation";
-import { COLLECTIVE_CONTRACT_ADDRESSES, ROOTSTOCK_TESTNET_CHAIN_ID } from "@/constants/contracts";
+import { COLLECTIVE_CONTRACT_ADDRESSES } from "@/constants/contracts";
+import { getExplorerTxUrl, type RootstockChainId } from "@/lib/utils/RootstockChains";
 
 const DECIMALS = 18n;
+const RIF_DECIMALS = 18;
 
-/** Max uint256 digits (2^256 - 1 has 78 digits). Amount is in wei (integer). */
-const MAX_AMOUNT_DIGITS = 78;
+/** Max decimal places for RIF input (1 RIF = 10^18 wei). */
+const MAX_RIF_DECIMAL_PLACES = 18;
 
 /**
- * Parse user amount input for staking. Amount must be a non-negative integer (wei).
- * Returns null if invalid; use for validation before calling contract.
+ * Parse RIF amount (e.g. "1", "10", "1.5", ".5") to wei. Returns null if invalid.
+ * Avoids float precision by splitting on decimal and padding fractional part.
  */
-function parseStakingAmount(input: string): bigint | null {
-  const trimmed = input.trim();
+function parseRifToWei(input: string): bigint | null {
+  let trimmed = input.trim();
   if (!trimmed) return null;
-  if (!/^\d+$/.test(trimmed)) return null;
-  if (trimmed.length > MAX_AMOUNT_DIGITS) return null;
-  const value = BigInt(trimmed);
+  if (trimmed.startsWith(".")) trimmed = "0" + trimmed;
+  if (!/^\d+(\.\d*)?$/.test(trimmed)) return null;
+  const parts = trimmed.split(".");
+  const whole = parts[0] ?? "0";
+  const fracRaw = (parts[1] ?? "").slice(0, MAX_RIF_DECIMAL_PLACES);
+  const frac = fracRaw.padEnd(MAX_RIF_DECIMAL_PLACES, "0");
+  const wholeWei = BigInt(whole) * 10n ** BigInt(RIF_DECIMALS);
+  const fracWei = frac === "" ? 0n : BigInt(frac);
+  const value = wholeWei + fracWei;
   return value > 0n ? value : null;
 }
 
@@ -69,6 +77,7 @@ interface StakingCardProps {
   walletClient: WalletClient | null;
   address: Address;
   isRealSdk?: boolean;
+  chainId: RootstockChainId;
 }
 
 export default function StakingCard({
@@ -76,6 +85,7 @@ export default function StakingCard({
   walletClient,
   address,
   isRealSdk = true,
+  chainId,
 }: StakingCardProps): JSX.Element {
   const [amount, setAmount] = useState("");
   const [loading, setLoading] = useState<"stake" | "withdraw" | null>(null);
@@ -83,12 +93,14 @@ export default function StakingCard({
     "approving" | "staking" | "confirming" | "success" | null
   >(null);
   const [stakeNeededApprove, setStakeNeededApprove] = useState(false);
+  const [lastStakeTxHash, setLastStakeTxHash] = useState<string | null>(null);
+  const [lastWithdrawTxHash, setLastWithdrawTxHash] = useState<string | null>(null);
   const { toast } = useToast();
-  const publicClient = usePublicClient({ chainId: ROOTSTOCK_TESTNET_CHAIN_ID });
+  const publicClient = usePublicClient({ chainId });
 
   const addresses = useMemo(
-    () => COLLECTIVE_CONTRACT_ADDRESSES[ROOTSTOCK_TESTNET_CHAIN_ID],
-    []
+    () => COLLECTIVE_CONTRACT_ADDRESSES[chainId],
+    [chainId]
   );
 
   const queryOpts = useMemo(
@@ -98,22 +110,21 @@ export default function StakingCard({
 
   const { data: nativeBalance, refetch: refetchNative } = useBalance({
     address,
-    chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
+    chainId,
     query: queryOpts,
   });
 
-  // Use useBalance with token for RIF/stRIF so Testnet tRIF (ERC677) is detected reliably
   const rifBalanceQuery = useBalance({
     address,
     token: addresses?.RIF ? getAddress(addresses.RIF) : undefined,
-    chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
+    chainId,
     query: { ...queryOpts, enabled: !!address && !!addresses?.RIF },
   });
 
   const stRifBalanceQuery = useBalance({
     address,
     token: addresses?.stRIF ? getAddress(addresses.stRIF) : undefined,
-    chainId: ROOTSTOCK_TESTNET_CHAIN_ID,
+    chainId,
     query: { ...queryOpts, enabled: !!address && !!addresses?.stRIF },
   });
 
@@ -138,11 +149,11 @@ export default function StakingCard({
 
   const handleStake = useCallback(async () => {
     if (!walletClient || !addresses || !publicClient) return;
-    const value = parseStakingAmount(amount);
+    const value = parseRifToWei(amount);
     if (value === null) {
       toast({
         title: "Invalid amount",
-        description: "Enter a positive integer (amount in wei).",
+        description: "Enter a positive RIF amount (e.g. 1 or 10.5).",
         variant: "destructive",
       });
       return;
@@ -166,7 +177,21 @@ export default function StakingCard({
       await result.wait();
       refetchBalances();
       setStakeFlowStep("success");
-      toast({ title: "Stake submitted", description: `Tx: ${result.hash.slice(0, 10)}...` });
+      setLastStakeTxHash(result.hash);
+      const stakeExplorerUrl = getExplorerTxUrl(chainId, result.hash);
+      toast({
+        title: "Stake submitted",
+        description: (
+          <a
+            href={stakeExplorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-medium text-[#FF9100] hover:text-[#FF9100]/80"
+          >
+            View transaction
+          </a>
+        ),
+      });
       setAmount("");
     } catch (e) {
       setStakeFlowStep(null);
@@ -178,15 +203,15 @@ export default function StakingCard({
     } finally {
       setLoading(null);
     }
-  }, [sdk, walletClient, address, amount, addresses, publicClient, toast, refetchBalances]);
+  }, [sdk, walletClient, address, amount, addresses, publicClient, toast, refetchBalances, chainId]);
 
   const handleWithdraw = useCallback(async () => {
     if (!walletClient || !addresses || !publicClient) return;
-    const value = parseStakingAmount(amount);
+    const value = parseRifToWei(amount);
     if (value === null) {
       toast({
         title: "Invalid amount",
-        description: "Enter a positive integer (amount in wei).",
+        description: "Enter a positive RIF amount (e.g. 1 or 10.5).",
         variant: "destructive",
       });
       return;
@@ -197,7 +222,21 @@ export default function StakingCard({
       const result = await sdk.staking.unstakeRIF(walletClient, value, address);
       await result.wait();
       refetchBalances();
-      toast({ title: "Withdraw submitted", description: `Tx: ${result.hash.slice(0, 10)}...` });
+      setLastWithdrawTxHash(result.hash);
+      const withdrawExplorerUrl = getExplorerTxUrl(chainId, result.hash);
+      toast({
+        title: "Withdraw submitted",
+        description: (
+          <a
+            href={withdrawExplorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline font-medium text-[#FF9100] hover:text-[#FF9100]/80"
+          >
+            View transaction
+          </a>
+        ),
+      });
       setAmount("");
     } catch (e) {
       toast({
@@ -208,7 +247,7 @@ export default function StakingCard({
     } finally {
       setLoading(null);
     }
-  }, [sdk, walletClient, address, amount, addresses, publicClient, toast, refetchBalances]);
+  }, [sdk, walletClient, address, amount, addresses, publicClient, toast, refetchBalances, chainId]);
 
   const notReady = !walletClient || !publicClient;
 
@@ -249,9 +288,11 @@ export default function StakingCard({
   return (
     <Card
       className={`bg-[#000000] border ${CARD_BORDER} ${CARD_ACTIVE} text-[#FAF9F5]`}
+      role="region"
+      aria-labelledby="stake-rif-title"
     >
       <CardHeader>
-        <CardTitle className="text-[#FAF9F5]">Stake RIF</CardTitle>
+        <CardTitle id="stake-rif-title" className="text-[#FAF9F5]">Stake RIF</CardTitle>
         <CardDescription className="text-[#FAF9F5]/80">
           Stake RIF to earn voting power. Withdraw when you no longer need to vote.
         </CardDescription>
@@ -261,14 +302,19 @@ export default function StakingCard({
       </CardHeader>
       {!isRealSdk && (
         <div className="mx-6 mb-2 p-3 rounded-lg border border-amber-500/60 bg-amber-950/30 text-amber-200 text-sm">
-          Collective SDK not installed. Set <code className="bg-black/30 px-1 rounded">GITHUB_TOKEN</code> (read:packages), run <code className="bg-black/30 px-1 rounded">npm install</code>. See README.
+          Collective SDK not installed. Run <code className="bg-black/30 px-1 rounded">npm install</code>. If the package is from GitHub Packages, set <code className="bg-black/30 px-1 rounded">GITHUB_TOKEN</code> (read:packages) then run <code className="bg-black/30 px-1 rounded">npm install</code>. See README.
         </div>
       )}
       <CardContent className="flex flex-col gap-4">
         {stakeFlowStep !== null && (
-          <div className="rounded-lg border border-[#FF9100]/40 bg-[#0a0a0a] p-4">
-            <p className="mb-3 text-sm font-medium text-[#FAF9F5]">Stake progress</p>
-            <ul className="space-y-2">
+          <div
+            className="rounded-lg border border-[#FF9100]/40 bg-[#0a0a0a] p-4"
+            role="status"
+            aria-live="polite"
+            aria-label="Stake progress"
+          >
+            <p id="stake-progress-heading" className="mb-3 text-sm font-medium text-[#FAF9F5]">Stake progress</p>
+            <ul className="space-y-2" aria-labelledby="stake-progress-heading">
               {timelineSteps.map((step, i) => {
                 const done = i < stepIndex || stakeFlowStep === "success";
                 const current = i === stepIndex && stakeFlowStep !== "success";
@@ -299,41 +345,60 @@ export default function StakingCard({
                 <p className="text-sm text-[#FAF9F5]/80">
                   Your stRIF balance has been updated. Use your voting power below.
                 </p>
-                <Button
-                  onClick={scrollToProposals}
-                  className="w-fit border-[#FF9100] text-[#FF9100] hover:bg-[#FF9100] hover:text-black"
-                >
-                  Vote on proposals
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    onClick={scrollToProposals}
+                    className="w-fit border-[#FF9100] text-[#FF9100] hover:bg-[#FF9100] hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF9100] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+                    aria-label="Scroll to proposals and vote"
+                  >
+                    Vote on proposals
+                  </Button>
+                  {lastStakeTxHash && (
+                    <a
+                      href={getExplorerTxUrl(chainId, lastStakeTxHash)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-w-[100px] items-center justify-center rounded-full border border-[#FF9100]/60 bg-black px-5 py-2 text-[18px] font-medium text-[#FAF9F5] hover:bg-[#FF9100]/10 hover:border-[#FF9100]/80 focus:outline-none focus:ring-2 focus:ring-[#FF9100] focus:ring-offset-2 focus:ring-offset-black"
+                      aria-label="View stake transaction in block explorer"
+                    >
+                      View transaction
+                    </a>
+                  )}
+                </div>
               </div>
             )}
           </div>
         )}
         <div className="flex flex-col gap-2">
-          <label className="text-sm text-[#FAF9F5]/90">Amount (wei, integer)</label>
+          <label htmlFor="stake-amount-input" className="text-sm text-[#FAF9F5]/90">Amount (RIF)</label>
           <Input
+            id="stake-amount-input"
             type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            placeholder="0"
+            inputMode="decimal"
+            placeholder="e.g. 1 or 10.5"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             className="bg-black border-[#FF9100]/50 text-[#FAF9F5] placeholder:text-[#FAF9F5]/50 focus-visible:ring-[#FF9100]"
             disabled={notReady}
+            aria-describedby="stake-amount-hint"
+            aria-invalid={amount.length > 0 && parseRifToWei(amount) === null}
           />
+          <span id="stake-amount-hint" className="sr-only">Enter amount in RIF, e.g. 1 or 10.5</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" role="group" aria-label="Stake and withdraw actions">
           <Button
             onClick={handleStake}
             disabled={notReady || !amount || loading !== null}
-            className="border-[#FF9100] text-[#FF9100] hover:bg-[#FF9100] hover:text-black"
+            className="border-[#FF9100] text-[#FF9100] hover:bg-[#FF9100] hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF9100] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            aria-label={loading === "stake" ? "Staking in progress" : "Stake RIF"}
           >
             {loading === "stake" ? "Staking…" : "Stake"}
           </Button>
           <Button
             onClick={handleWithdraw}
             disabled={notReady || !amount || loading !== null}
-            className="border-[#FF9100] text-[#FF9100] hover:bg-[#FF9100] hover:text-black"
+            className="border-[#FF9100] text-[#FF9100] hover:bg-[#FF9100] hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF9100] focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            aria-label={loading === "withdraw" ? "Withdrawing in progress" : "Withdraw RIF"}
           >
             {loading === "withdraw" ? "Withdrawing…" : "Withdraw"}
           </Button>

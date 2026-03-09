@@ -12,7 +12,7 @@ const collectiveSdkInstalled = (() => {
   } catch (e) {
     const err = e as NodeJS.ErrnoException;
     const code = err?.code ?? "UNKNOWN";
-    console.warn(`[Vite] @rsksmart/collective-sdk not found (${code}). Using stub. Set GITHUB_TOKEN + npm install for real SDK.`);
+    console.warn(`[Vite] @rsksmart/collective-sdk not found (${code}). Using stub. Run npm install; if from GitHub Packages, set GITHUB_TOKEN with read:packages then npm install.`);
     return false;
   }
 })();

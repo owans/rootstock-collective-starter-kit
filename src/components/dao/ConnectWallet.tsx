@@ -7,11 +7,14 @@ import CustomConnectButton from "./CustomConnectButton";
 
 export default function ConnectWallet(): JSX.Element {
   return (
-    <div className="flex flex-col items-center gap-4">
-      <p className="text-[#FAF9F5] text-sm">
-        Connect your wallet on Rootstock Testnet to stake RIF and vote.
+    <section
+      className="flex flex-col items-center gap-4"
+      aria-labelledby="connect-wallet-heading"
+    >
+      <p id="connect-wallet-heading" className="text-[#FAF9F5] text-sm">
+        Connect your wallet on Rootstock (Mainnet or Testnet) to stake RIF and vote.
       </p>
       <CustomConnectButton />
-    </div>
+    </section>
   );
 }

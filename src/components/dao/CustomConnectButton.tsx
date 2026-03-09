@@ -30,7 +30,8 @@ export default function CustomConnectButton(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => setAccountModalOpen(true)}
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${BTN_BG} ${BORDER} ${TEXT}`}
+                  aria-label="Open account details and disconnect"
+                  className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors ${BTN_BG} ${BORDER} ${TEXT} focus:outline-none focus:ring-2 focus:ring-[#FF9100] focus:ring-offset-2 focus:ring-offset-black`}
                 >
                   {chain.hasIcon && chain.iconUrl && (
                     <img
@@ -56,7 +57,8 @@ export default function CustomConnectButton(): JSX.Element {
               <button
                 type="button"
                 onClick={() => setAccountModalOpen(true)}
-                className={`rounded-full px-4 py-2 text-sm font-medium ${BTN_BG} ${BORDER} ${TEXT}`}
+                aria-label="Open account details"
+                className={`rounded-full px-4 py-2 text-sm font-medium ${BTN_BG} ${BORDER} ${TEXT} focus:outline-none focus:ring-2 focus:ring-[#FF9100] focus:ring-offset-2 focus:ring-offset-black`}
               >
                 {formatAddress(account.address)}
               </button>
@@ -67,7 +69,8 @@ export default function CustomConnectButton(): JSX.Element {
             <button
               type="button"
               onClick={openConnectModal}
-              className={`rounded-full px-4 py-2 text-sm font-medium ${BTN_BG} ${BORDER} ${TEXT}`}
+              aria-label="Connect wallet to stake RIF and vote"
+              className={`rounded-full px-4 py-2 text-sm font-medium ${BTN_BG} ${BORDER} ${TEXT} focus:outline-none focus:ring-2 focus:ring-[#FF9100] focus:ring-offset-2 focus:ring-offset-black`}
             >
               Connect Wallet
             </button>
